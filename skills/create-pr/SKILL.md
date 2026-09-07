@@ -81,15 +81,20 @@ skill creates; don't rename an existing branch just to add one.
 Use this table to recommend a base, then **confirm with the user** before proceeding. Reasoning for
 each row is in `references/git-flow.md`.
 
+> **⚠️ Squad branches are retired (confirmed 2026-09)** — the table below reflects that. Two things
+> about the replacement flow are still genuinely undocumented: whether `story → release` is still a
+> no-review direct merge, and whether branch names still carry a squad-like segment. Don't assume
+> either answer — surface it as an open question the same way an ambiguous base normally gets asked.
+
 | Current branch (PR source) | Recommended base | Review needed? | Must confirm because… |
 |---|---|---|---|
-| `subtask/<squad>/<JIRA>` | its parent `story/<squad>/<story-JIRA>` | **Yes** | the branch name doesn't say *which* story — ask, or list `story/<squad>/*` branches to pick from |
-| `story/<squad>/<JIRA>` | `<squad>` | **No — not a PR** | the guide merges story→squad directly, no review. Say so; only open a PR if the user explicitly wants one |
-| `fix/<squad>/<JIRA>` (or `fix/<JIRA>`) | `<squad>` during dev, or `release/release-x.y.z` during release prep | **Yes** | which one depends on where the team is in the cycle — ask |
+| `subtask/<JIRA>` (or `subtask/<squad>/<JIRA>`) | its parent `story/<story-JIRA>` | **Yes** | the branch name doesn't say *which* story — ask, or list `story/*` branches to pick from. Unchanged by the squad retirement. |
+| `story/<JIRA>` (or `story/<squad>/<JIRA>`) | the current `release/release-x.y.z` branch | **Unconfirmed** | squad branches are retired, so this no longer merges into `<squad>` — but whether it's still a no-review direct merge or now needs a reviewed PR isn't documented anywhere. Ask explicitly; don't default to either the old "no review" behavior or a new assumption. |
+| `fix/<JIRA>` (or `fix/<squad>/<JIRA>`) | the current `release/release-x.y.z` branch | **Yes** | squad is no longer a target, so this always goes to the current release branch now — confirm which one |
 | `hotfix/*` | the current `release/release-x.y.z` hotfix branch | **Yes** | confirm the exact release branch; hotfixes branch from `master` |
-| `feature/*/*`, `task/*/*` | usually `<squad>` or the owning story | **Yes** | context-dependent — confirm |
+| `feature/*/*`, `task/*/*` | usually the current release branch or the owning story | **Yes** | context-dependent — confirm |
 | `release/*` | `master` | (devops) | release→master is a devops step, not a normal dev PR — confirm intent |
-| `squad*`, `develop`, `master`, `bau-bugs` | — | — | **not a PR source** in this model — stop and clarify what they want |
+| `squad*` (if one still exists), `develop`, `master`, `bau-bugs` | — | — | **not a PR source** in this model — stop and clarify what they want. A `squad*` branch is a leftover from the retired model; don't assume it still plays its old role. |
 
 If you cannot confidently map the branch to a row, that's the signal to **ask**, not to guess.
 

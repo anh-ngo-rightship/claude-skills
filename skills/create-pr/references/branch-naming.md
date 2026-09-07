@@ -33,7 +33,11 @@ The page provides a downloadable hook to place at `<repo-root>/.git/hooks/pre-pu
 - Pre-push hooks may or may not be installed depending on the repo/machine — check before assuming
   enforcement happens automatically. Without one, a bad name may only be caught server-side (branch
   protection) or not at all locally. Don't rely on a local hook existing.
-- The `<squad>` and `<JIRA>` segments in practice look like `squad3` and `ET3-6112`.
+- The `<squad>` and `<JIRA>` segments in practice look like `squad3` and `ET3-6112`. **Squad branches
+  themselves are retired (confirmed 2026-09, see `git-flow.md`)** — but whether the `<squad>` segment
+  in branch *names* (`type/<squad>/<JIRA>`) is still used, or has been dropped in favor of
+  `type/<JIRA>`, is undocumented and unconfirmed. Ask rather than assume either format when creating
+  a new branch.
 
 ## Short description suffix
 
