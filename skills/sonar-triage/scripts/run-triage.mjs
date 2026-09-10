@@ -49,7 +49,7 @@ function expandHome(p) {
 }
 
 function parseArgs(argv) {
-	const args = { target: null, out: null };
+	const args = { target: null, out: null, file: null };
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i];
 		if (arg === "--target" || arg === "-t") {
@@ -60,6 +60,10 @@ function parseArgs(argv) {
 			args.out = argv[++i];
 		} else if (arg.startsWith("--out=")) {
 			args.out = arg.slice("--out=".length);
+		} else if (arg === "--file" || arg === "-f") {
+			args.file = argv[++i];
+		} else if (arg.startsWith("--file=")) {
+			args.file = arg.slice("--file=".length);
 		} else if (arg === "--help" || arg === "-h") {
 			args.help = true;
 		}
@@ -68,11 +72,17 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-	process.stdout.write(`Usage: node run-triage.mjs --target <path> [--out <path>]
+	process.stdout.write(`Usage: node run-triage.mjs --target <path> [--file <relative-path>] [--out <path>]
 
   --target <path>  Path to the target project. Must contain eslint.config.js
                     (searched at the root and one level into common subdirs
                     like ui/) and an installed node_modules/.bin/eslint.
+  --file <path>     Optional. Lint just this one file instead of the whole
+                    project, given as a path relative to the resolved target
+                    directory (the directory containing eslint.config.js) —
+                    e.g. src/components/comp-data-grid/query-filter.ts.
+                    Uses the exact same overlay config and classification as
+                    a full-project run, just scoped to one file.
   --out <path>     Where to write the Markdown report. Defaults to
                     ./sonar-triage-report.md, resolved against the directory
                     this script is invoked from (never inside the target).
@@ -196,7 +206,7 @@ export default [
 
 // --- 3. Run the target's own ESLint binary against the overlay config -------------------------
 
-function runEslint(resolvedTargetDir, overlayPath) {
+function runEslint(resolvedTargetDir, overlayPath, lintTarget) {
 	const binary = findEslintBinary(resolvedTargetDir);
 	if (!binary) {
 		fail(
@@ -205,7 +215,7 @@ function runEslint(resolvedTargetDir, overlayPath) {
 		);
 	}
 
-	const cliArgs = ["--config", overlayPath, ".", "--format", "json"];
+	const cliArgs = ["--config", overlayPath, lintTarget, "--format", "json"];
 	const spawnCmd = binary.kind === "bin" ? binary.path : process.execPath;
 	const spawnArgs = binary.kind === "bin" ? cliArgs : [binary.path, ...cliArgs];
 
@@ -339,11 +349,16 @@ function summarize(findings) {
 	return summary;
 }
 
-function renderReport({ targetRoot, resolvedTargetDir, findings, summary }) {
+function renderReport({ targetRoot, resolvedTargetDir, fileScope, findings, summary }) {
 	const lines = [];
 	lines.push("# sonar-triage report");
 	lines.push("");
 	lines.push(`- **Target:** \`${targetRoot}\` (linted from \`${resolvedTargetDir}\`)`);
+	if (fileScope) {
+		lines.push(`- **Scope:** single file — \`${fileScope}\``);
+	} else {
+		lines.push(`- **Scope:** whole project`);
+	}
 	lines.push(`- **Generated:** ${new Date().toISOString()}`);
 	lines.push(`- **Total findings:** ${summary.total}`);
 	lines.push("");
@@ -442,11 +457,24 @@ async function main() {
 		);
 	}
 
+	let lintTarget = ".";
+	let fileScope = null;
+	if (args.file) {
+		const fileAbsPath = resolve(resolvedTargetDir, args.file);
+		if (!existsSync(fileAbsPath) || !statSync(fileAbsPath).isFile()) {
+			fail(`--file ${args.file} does not exist under ${resolvedTargetDir}.`);
+		}
+		fileScope = relative(resolvedTargetDir, fileAbsPath);
+		lintTarget = fileScope;
+	}
+
 	ensureCache();
 	const overlayPath = writeOverlay(configPath);
 
-	process.stdout.write(`sonar-triage: linting ${resolvedTargetDir} (this may take a moment)...\n`);
-	const eslintResults = runEslint(resolvedTargetDir, overlayPath);
+	process.stdout.write(
+		`sonar-triage: linting ${fileScope ? join(resolvedTargetDir, fileScope) : resolvedTargetDir} (this may take a moment)...\n`,
+	);
+	const eslintResults = runEslint(resolvedTargetDir, overlayPath, lintTarget);
 
 	const pluginMetaIndex = await buildPluginRuleMetaIndex(overlayPath);
 	const coreMetaIndex = buildCoreRuleMetaIndex(resolvedTargetDir);
@@ -454,7 +482,7 @@ async function main() {
 
 	const findings = buildFindings(eslintResults, resolvedTargetDir, metaIndex);
 	const summary = summarize(findings);
-	const report = renderReport({ targetRoot, resolvedTargetDir, findings, summary });
+	const report = renderReport({ targetRoot, resolvedTargetDir, fileScope, findings, summary });
 
 	const outPath = resolve(INVOKING_CWD, expandHome(args.out) || "sonar-triage-report.md");
 	mkdirSync(dirname(outPath), { recursive: true });

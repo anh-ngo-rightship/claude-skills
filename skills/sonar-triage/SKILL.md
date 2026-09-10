@@ -83,10 +83,18 @@ If the user didn't already give a target project path, ask for one. It must:
 ### 2. Run the triage script
 
 ```
-node ~/.claude/skills/sonar-triage/scripts/run-triage.mjs --target <path> [--out <file>]
+node ~/.claude/skills/sonar-triage/scripts/run-triage.mjs --target <path> [--file <relative-path>] [--out <file>]
 ```
 
 - `--target` — required, the project path from step 1.
+- `--file` — optional, path to a single file relative to the resolved target directory (e.g.
+  `src/components/comp-data-grid/query-filter.ts`) to lint just that file instead of the whole
+  project. Same overlay config and classification logic, just scoped to one file — useful when a
+  user wants a concrete example on the single worst-offending file rather than a full-repo dump.
+  To find a good candidate file for this, run the whole-project pass first and pick a file with
+  both a high finding count and rule variety (not just one repeated trivial rule) from its
+  report — that makes a much better example than the raw highest-count file, which is often a
+  constants file tripped by one mechanical rule dozens of times.
 - `--out` — optional, defaults to `./sonar-triage-report.md` **resolved relative to the directory
   you invoke this command from**, not inside the target repo. Don't write report files into a
   repo this skill is merely analyzing. Pick an explicit `--out` (e.g. into the scratchpad
